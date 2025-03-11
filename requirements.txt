@@ -1,0 +1,14 @@
+torch
+torchvision
+torchaudio
+scipy
+numpy
+jupyter
+notebook
+ipdb
+pyyaml
+easydict
+requests
+matplotlib
+seaborn
+setuptools
