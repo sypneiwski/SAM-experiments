@@ -7,19 +7,20 @@ from data import ModularAdditionDataset
 
 torch.random.manual_seed(42)
 
-def random_test(model, modulus, num_samples=20):
+def random_test(model, modulus):
     """
     returns accuracy of model on random test data
     """
     model.eval()
+    x = torch.tensor([(a, b) for a in range(modulus) for b in range(modulus)]).float()
+    y = (torch.sum(x, dim=1) % modulus).long()
+    assert len(x) == len(y) == modulus**2
     with torch.no_grad():
-        x = torch.randint(0, modulus, (num_samples, 2)).float()
-        y = torch.sum(x, dim=1) % modulus
         y_pred = model(x)
         correct = torch.sum(torch.argmax(y_pred, dim=1) == y).item()
-    return correct / num_samples
+    return correct / (modulus**2)
 
-def train():
+def train(optim_class):
     # Hyperparameters
     modulus = 10
     batch_size = modulus**2
@@ -36,7 +37,7 @@ def train():
     # Create the model, loss function, and optimizer.
     model = MLP(input_dim=2, hidden_dim=32, output_dim=modulus).to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
+    optimizer = optim_class(model.parameters(), lr=learning_rate)
 
     # Training loop.
     for epoch in range(epochs):
@@ -53,15 +54,25 @@ def train():
 
         avg_loss = total_loss / len(train_dataset)
 
-        if epoch % 20 == 0:
+        if epoch % 10 == 0:
             acc = random_test(model, modulus)
             print(f"Epoch [{epoch+1}/{epochs}] Loss: {avg_loss:.4f} Accuracy: {acc:.4f}")
+            if acc == 1.0:
+                return epoch
         else:
             print(f"Epoch [{epoch+1}/{epochs}] Loss: {avg_loss:.4f}")
-
-        # we can do early stopping for small modulus, cos the batch loss is the entire dataset
-        if avg_loss < 1e-5:
-            break
+    return None
 
 if __name__ == "__main__":
-    train()
+    optimizers = [
+        optim.SGD,
+        optim.Adam,
+        optim.AdamW,
+    ]
+    res = []
+    for optim in optimizers:
+        print(f"Training with {optim.__name__}")
+        epochs_to_solve = train(optim_class=optim)
+        res.append((optim, epochs_to_solve))
+    for optim, epochs_to_solve in res:
+        print(f"Model solved in {epochs_to_solve} epochs with {optim.__name__}")
