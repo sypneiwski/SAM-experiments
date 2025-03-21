@@ -10,7 +10,7 @@ import csv
 torch.random.manual_seed(42)
 
 # Global hyperparameters
-MODULUS = 13
+MODULUS = 61
 EPOCHS = 30_000
 LEARNING_RATE = 1e-3
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -89,8 +89,78 @@ def train(train_loader, optim_class):
     return None, best_acc
 
 
+def train_with_dual_loaders(
+    train_dataset, perturb_batch_size, update_batch_size, optim_class
+):
+    # Create two DataLoaders: one for perturbation and one for the update step.
+    perturb_loader = DataLoader(
+        train_dataset, batch_size=perturb_batch_size, shuffle=True
+    )
+    update_loader = DataLoader(
+        train_dataset, batch_size=update_batch_size, shuffle=True
+    )
+
+    # Initialize model, loss, and optimizer.
+    model = MLP(input_dim=2, hidden_dim=32, output_dim=MODULUS).to(DEVICE)
+    criterion = nn.CrossEntropyLoss()
+    if optim_class == SAM:
+        base_optimizer = torch.optim.Adam
+        optimizer = SAM(
+            model.parameters(), base_optimizer=base_optimizer, lr=LEARNING_RATE
+        )
+    else:
+        optimizer = optim_class(model.parameters(), lr=LEARNING_RATE)
+
+    best_acc = None
+
+    for epoch in tqdm(range(EPOCHS)):
+        model.train()
+        total_loss = 0.0
+
+        # Create iterators for both DataLoaders.
+        perturb_iter = iter(perturb_loader)
+
+        for inputs, targets in update_loader:
+            inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
+
+            # assume SAM
+            try:
+                inputs_perturb, targets_perturb = next(perturb_iter)
+            except StopIteration:
+                perturb_iter = iter(perturb_loader)
+                inputs_perturb, targets_perturb = next(perturb_iter)
+            inputs_perturb, targets_perturb = inputs_perturb.to(
+                DEVICE
+            ), targets_perturb.to(DEVICE)
+            perturbed_outputs = model(inputs_perturb)
+
+            perturb_loss = criterion(perturbed_outputs, targets_perturb)
+            perturb_loss.backward()
+            optimizer.first_step(zero_grad=True)
+
+            update_loss = criterion(model(inputs), targets)
+            update_loss.backward()
+            optimizer.second_step(zero_grad=True)
+
+            total_loss += update_loss.item() * inputs.size(0)
+
+        avg_loss = total_loss / len(train_dataset)
+
+        if epoch % 50 == 0:
+            acc = full_test(model, MODULUS)
+            best_acc = max(acc, best_acc) if best_acc is not None else acc
+            if acc == 1.0:
+                return epoch, best_acc
+            if epoch % 1000 == 0:
+                print(
+                    f"Epoch [{epoch+1}/{EPOCHS}] Loss: {avg_loss:.4f} Accuracy: {acc:.4f}"
+                )
+    return None, best_acc
+
+
 if __name__ == "__main__":
     noise_settings = [0.0, 0.5, 1.0, 2.0]
+    update_batch_size = 2048
     batch_sizes = [MODULUS**2 // 8, MODULUS**2 // 4, MODULUS**2 // 2, MODULUS**2]
     optimizers = [
         # torch.optim.SGD,
@@ -111,7 +181,13 @@ if __name__ == "__main__":
             )
             for optimizer in optimizers:
                 print(f"Training with {optimizer.__name__}")
-                epochs_to_solve, best_acc = train(train_loader, optim_class=optimizer)
+                # epochs_to_solve, best_acc = train(train_loader, optim_class=optimizer)
+                epochs_to_solve, best_acc = train_with_dual_loaders(
+                    train_dataset,
+                    perturb_batch_size=batch_size,
+                    update_batch_size=update_batch_size,
+                    optim_class=optimizer,
+                )
                 res.append(
                     (noise_std, batch_size, optimizer, epochs_to_solve, best_acc)
                 )
