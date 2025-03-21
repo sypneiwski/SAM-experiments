@@ -10,9 +10,10 @@ import csv
 torch.random.manual_seed(42)
 
 # Global hyperparameters
-MODULUS = 17
+MODULUS = 13
 EPOCHS = 30_000
 LEARNING_RATE = 1e-3
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def full_test(model, modulus):
@@ -20,8 +21,13 @@ def full_test(model, modulus):
     returns accuracy of model on random test data
     """
     model.eval()
-    x = torch.tensor([(a, b) for a in range(modulus) for b in range(modulus)]).float()
-    y = (torch.sum(x, dim=1) % modulus).long().to(x.device)
+    device = next(model.parameters()).device  # Get model's device
+    x = (
+        torch.tensor([(a, b) for a in range(modulus) for b in range(modulus)])
+        .float()
+        .to(device)
+    )
+    y = (torch.sum(x, dim=1) % modulus).long().to(device)
     assert len(x) == len(y) == modulus**2
     with torch.no_grad():
         y_pred = model(x)
@@ -30,11 +36,8 @@ def full_test(model, modulus):
 
 
 def train(train_loader, optim_class):
-    # Use CUDA if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     # Create the model, loss function, and optimizer.
-    model = MLP(input_dim=2, hidden_dim=32, output_dim=MODULUS).to(device)
+    model = MLP(input_dim=2, hidden_dim=32, output_dim=MODULUS).to(DEVICE)
     criterion = nn.CrossEntropyLoss()
     if optim_class == SAM:
         base_optimizer = torch.optim.Adam
@@ -51,7 +54,7 @@ def train(train_loader, optim_class):
         model.train()
         total_loss = 0.0
         for inputs, targets in train_loader:
-            inputs, targets = inputs.to(device), targets.to(device)
+            inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
             outputs = model(inputs)
             if optim_class == SAM:
                 # SAM requires two backward passes.
@@ -100,7 +103,9 @@ if __name__ == "__main__":
     for noise_std in noise_settings:
         for batch_size in batch_sizes:
             print(f"Training with batch size {batch_size}, noise std {noise_std}")
-            train_dataset = ModularAdditionDataset(MODULUS, noise_std=noise_std)
+            train_dataset = ModularAdditionDataset(
+                MODULUS, device=DEVICE, noise_std=noise_std
+            )
             train_loader = DataLoader(
                 train_dataset, batch_size=batch_size, shuffle=True
             )
