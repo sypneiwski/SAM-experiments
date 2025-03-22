@@ -13,3 +13,4 @@ matplotlib
 seaborn
 setuptools
 tqdm
+git+https://github.com/noahgolmant/pytorch-hessian-eigenthings.git@master#egg=hessian-eigenthings
