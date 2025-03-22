@@ -12,7 +12,7 @@ import logging
 torch.random.manual_seed(42)
 
 # Global hyperparameters
-MODULUS = 17
+MODULUS = 61
 EPOCHS = 30_000
 LEARNING_RATE = 1e-3
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -20,7 +20,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def full_test(model, test_dataset):
     """
-    returns accuracy of model on random test data and 128-sharpness
+    returns accuracy of model on random test data
     """
     model.eval()
     
