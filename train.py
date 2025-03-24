@@ -147,12 +147,12 @@ def train_with_dual_loaders(
 
             if acc == 1.0:
                 msharpness = evaluate_m_sharpness(model, test_dataset, criterion, optimizer, m=128)
-                top_eigen, bulk_eigen = evaluate_hessian_sharpness(model, test_dataset, criterion)
+                top_eigen, bulk_eigen = evaluate_hessian_sharpness(model, test_dataset, criterion, use_gpu=DEVICE.type == "cuda")
                 return epoch, best_acc, msharpness, top_eigen, bulk_eigen
         
             if epoch % 1000 == 0:
                 msharpness = evaluate_m_sharpness(model, test_dataset, criterion, optimizer, m=128)
-                top_eigen, bulk_eigen = evaluate_hessian_sharpness(model, test_dataset, criterion)
+                top_eigen, bulk_eigen = evaluate_hessian_sharpness(model, test_dataset, criterion, use_gpu=DEVICE.type == "cuda")
                 print(
                     f"Epoch [{epoch+1}/{EPOCHS}] | "
                     f"Loss: {avg_loss:.4f} | "

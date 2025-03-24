@@ -37,7 +37,7 @@ def evaluate_m_sharpness(model, test_dataset, criterion, optimizer, m=128):
     return avg_sharpness
 
 
-def evaluate_hessian_sharpness(model, test_dataset, criterion):
+def evaluate_hessian_sharpness(model, test_dataset, criterion, use_gpu=False):
     """
     Calculates the largest eigenvalue of the Hessian of the criterion (worst-case curvature) and the bulk
     of the Hessian spectrum (ratio \frac{\lambda_1}{\lambda_5}) which, according to the SAM paper, is a proxy
@@ -46,7 +46,6 @@ def evaluate_hessian_sharpness(model, test_dataset, criterion):
     test_loader = DataLoader(
         test_dataset, batch_size=128, shuffle=True
     )
-    eigenvals, _ = compute_hessian_eigenthings(model, test_loader,
-                                                   criterion, 5, use_gpu=next(model.parameters()).device == torch.device("cuda"))
+    eigenvals, _ = compute_hessian_eigenthings(model, test_loader, criterion, 5, use_gpu=use_gpu)
     return eigenvals[0], eigenvals[0] / eigenvals[4]
 
