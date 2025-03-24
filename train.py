@@ -94,7 +94,6 @@ def train_with_dual_loaders(
     update_loader = DataLoader(
         train_dataset, batch_size=update_batch_size, shuffle=True
     )
-    perturb_loader = update_loader
 
     # Initialize model, loss, and optimizer.
     model = MLP(input_dim=2, hidden_dim=32, output_dim=MODULUS).to(DEVICE)
