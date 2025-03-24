@@ -160,14 +160,18 @@ def train_with_dual_loaders(
 
 if __name__ == "__main__":
     noise_settings = [0.0, 0.5, 1.0, 2.0]
-    update_batch_size = 2048
-    batch_sizes = [MODULUS**2 // 8, MODULUS**2 // 4, MODULUS**2 // 2, MODULUS**2]
+    update_batch_size = 1024
+    # evenly spaced batch sizes, up to MODULUS**2
+    batch_sizes = [i for i in range(1, MODULUS**2 + 1, MODULUS**2 // 4)]
     optimizers = [
         # torch.optim.SGD,
         # torch.optim.Adam,
         # torch.optim.AdamW,
         SAM,  # n-SAM vs m-SAM is implicitly controlled by the choice of batch size
     ]
+    print(f"Running with noise settings {noise_settings}")
+    print(f"Running with batch sizes {batch_sizes}")
+    print(f"Running with optimizers {[o.__name__ for o in optimizers]}")
 
     res = []
     for noise_std in noise_settings:
