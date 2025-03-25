@@ -1,0 +1,16 @@
+noise_std=0.0, batch_size=465, optimizer=SAM, epochs_to_solve=None, best_acc=0.5732330018812147
+noise_std=0.0, batch_size=930, optimizer=SAM, epochs_to_solve=None, best_acc=0.39371136791185163
+noise_std=0.0, batch_size=1860, optimizer=SAM, epochs_to_solve=None, best_acc=0.23676431066917494
+noise_std=0.0, batch_size=3721, optimizer=SAM, epochs_to_solve=None, best_acc=0.624832034399355
+noise_std=0.5, batch_size=465, optimizer=SAM, epochs_to_solve=None, best_acc=0.5407148615963451
+noise_std=0.5, batch_size=930, optimizer=SAM, epochs_to_solve=None, best_acc=0.3001881214727224
+noise_std=0.5, batch_size=1860, optimizer=SAM, epochs_to_solve=None, best_acc=0.18382155334587477
+noise_std=0.5, batch_size=3721, optimizer=SAM, epochs_to_solve=None, best_acc=0.5038968019349637
+noise_std=1.0, batch_size=465, optimizer=SAM, epochs_to_solve=None, best_acc=0.40311744154797097
+noise_std=1.0, batch_size=930, optimizer=SAM, epochs_to_solve=None, best_acc=0.27519484009674816
+noise_std=1.0, batch_size=1860, optimizer=SAM, epochs_to_solve=None, best_acc=0.1332975006718624
+noise_std=1.0, batch_size=3721, optimizer=SAM, epochs_to_solve=None, best_acc=0.3211502284332169
+noise_std=2.0, batch_size=465, optimizer=SAM, epochs_to_solve=None, best_acc=0.2735823703305563
+noise_std=2.0, batch_size=930, optimizer=SAM, epochs_to_solve=None, best_acc=0.21284600913732868
+noise_std=2.0, batch_size=1860, optimizer=SAM, epochs_to_solve=None, best_acc=0.11905401773716742
+noise_std=2.0, batch_size=3721, optimizer=SAM, epochs_to_solve=None, best_acc=0.20317119054017738
