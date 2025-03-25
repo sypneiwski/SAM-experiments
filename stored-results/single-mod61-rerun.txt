@@ -1,0 +1,9 @@
+noise_std,batch_size,optimizer,epochs_to_solve,best_acc,m_sharpness,top_eigen,bulk_eigen
+0.0,128,<class 'sam.SAM'>,,0.8271969900564364,,,
+0.0,256,<class 'sam.SAM'>,,0.6866433754367106,,,
+0.0,512,<class 'sam.SAM'>,,0.639344262295082,,,
+0.0,1024,<class 'sam.SAM'>,,0.6337006181134104,,,
+1.0,128,<class 'sam.SAM'>,,0.26229508196721313,,,
+1.0,256,<class 'sam.SAM'>,,0.3012631013168503,,,
+1.0,512,<class 'sam.SAM'>,,0.31174415479709755,,,
+1.0,1024,<class 'sam.SAM'>,,0.305563020693362,,,
