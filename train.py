@@ -12,7 +12,7 @@ import logging
 torch.random.manual_seed(42)
 
 # Global hyperparameters
-MODULUS = 61
+MODULUS = 37
 EPOCHS = 30_000
 LEARNING_RATE = 1e-3
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -30,7 +30,8 @@ def full_test(model, test_dataset):
     return correct / len(test_dataset)
 
 
-def train(train_loader, optim_class):
+def train(train_dataset, batch_size, optim_class):
+    train_loader = DataLoader(train_dataset, batch_size=batch_size)
     # Create the model, loss function, and optimizer.
     model = MLP(input_dim=2, hidden_dim=32, output_dim=MODULUS).to(DEVICE)
     criterion = nn.CrossEntropyLoss()
@@ -73,7 +74,7 @@ def train(train_loader, optim_class):
         avg_loss = total_loss / len(train_loader.dataset)
 
         if epoch % 50 == 0:
-            acc = full_test(model, MODULUS)
+            acc = full_test(model, train_dataset)
             best_acc = max(acc, best_acc) if best_acc is not None else acc
             if acc == 1.0:
                 return epoch, best_acc
@@ -197,7 +198,7 @@ if __name__ == "__main__":
 
             for optimizer in optimizers:
                 print(f"Training with {optimizer.__name__}")
-                # epochs_to_solve, best_acc = train(train_loader, optim_class=optimizer)
+                # epochs_to_solve, best_acc = train(train_dataset, batch_size=batch_size, optim_class=optimizer)
                 epochs_to_solve, best_acc, msharpness, top_eigen, bulk_eigen = train_with_dual_loaders(
                     train_dataset,
                     test_dataset,
@@ -208,6 +209,9 @@ if __name__ == "__main__":
                 res.append(
                     (noise_std, batch_size, optimizer, epochs_to_solve, best_acc, msharpness, top_eigen, bulk_eigen)
                 )
+                # res.append(
+                #     (noise_std, batch_size, optimizer, epochs_to_solve, best_acc, None, None, None)
+                # )
 
     # save res to csv
     with open("results.csv", "w") as f:
