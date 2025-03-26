@@ -42,7 +42,7 @@ def train_single_loader(train_dataset, test_dataset, batch_size, optim_class):
     else:
         optimizer = optim_class(model.parameters(), lr=LEARNING_RATE)
 
-    best_acc = None
+    best_acc = 0.
 
     # Training loop.
     for epoch in tqdm(range(EPOCHS)):
@@ -72,29 +72,28 @@ def train_single_loader(train_dataset, test_dataset, batch_size, optim_class):
 
         avg_loss = total_loss / len(train_loader.dataset)
 
-        if epoch % 50 == 0:
+        if epoch % 1000 == 0:
             acc = full_test(model, test_dataset)
-            best_acc = max(acc, best_acc) if best_acc is not None else acc
 
-            if acc == 1.0:
-                msharpness = evaluate_m_sharpness(model, train_dataset, criterion, optimizer, m=128)
-                top_eigen = evaluate_hessian_sharpness(model, train_dataset, criterion, use_gpu=DEVICE.type == "cuda")
-                fisher_rao = evaluate_fisher_rao_norm(model, train_dataset, criterion, DEVICE)
-                return epoch, best_acc, msharpness, top_eigen
-        
-            if epoch % 1000 == 0:
-                msharpness = evaluate_m_sharpness(model, train_dataset, criterion, optimizer, m=128)
-                top_eigen = evaluate_hessian_sharpness(model, train_dataset, criterion, use_gpu=DEVICE.type == "cuda")
-                fisher_rao = evaluate_fisher_rao_norm(model, train_dataset, criterion, DEVICE)
-                print(
-                    f"Epoch [{epoch+1}/{EPOCHS}] | "
-                    f"Loss: {avg_loss:.4f} | "
-                    f"Accuracy: {acc:.4f} | "
-                    f"m-Sharpness: {msharpness:.4f} | "
-                    f"Top-1 Eigenvalue: {top_eigen:.4f} | "
-                    f"Fisher-Rao: {fisher_rao:.4f}"
-                )
-    return None, best_acc, msharpness, top_eigen, fisher_rao
+            msharpness = evaluate_m_sharpness(model, train_dataset, criterion, optimizer, m=128)
+            top_eigen = evaluate_hessian_sharpness(model, train_dataset, criterion, use_gpu=DEVICE.type == "cuda")
+            fisher_rao = evaluate_fisher_rao_norm(model, train_dataset, criterion, DEVICE)
+            print(
+                f"Epoch [{epoch+1}/{EPOCHS}] | "
+                f"Loss: {avg_loss:.4f} | "
+                f"Accuracy: {acc:.4f} | "
+                f"m-Sharpness: {msharpness:.4f} | "
+                f"Top-1 Eigenvalue: {top_eigen:.4f} | "
+                f"Fisher-Rao: {fisher_rao:.4f}"
+            )
+
+            if acc > best_acc:
+                best_acc = acc
+                best_msharpness = msharpness
+                best_top_eigen = top_eigen
+                best_fisher_rao = fisher_rao
+                
+    return None, best_acc, best_msharpness, best_top_eigen, best_fisher_rao
 
 
 def train_with_dual_loaders(
@@ -154,7 +153,7 @@ def train_with_dual_loaders(
 
         avg_loss = total_loss / len(train_dataset)
 
-        if epoch % 50 == 0:
+        if epoch % 100 == 0:
             acc = full_test(model, test_dataset)
             best_acc = max(acc, best_acc) if best_acc is not None else acc
 
@@ -164,7 +163,7 @@ def train_with_dual_loaders(
                 fisher_rao = evaluate_fisher_rao_norm(model, train_dataset, criterion, DEVICE)
                 return epoch, best_acc, msharpness, top_eigen
         
-            if epoch % 1000 == 0:
+            if epoch % 2000 == 0:
                 msharpness = evaluate_m_sharpness(model, train_dataset, criterion, optimizer, m=128)
                 top_eigen = evaluate_hessian_sharpness(model, train_dataset, criterion, use_gpu=DEVICE.type == "cuda")
                 fisher_rao = evaluate_fisher_rao_norm(model, train_dataset, criterion, DEVICE)
@@ -191,9 +190,9 @@ if __name__ == "__main__":
     batch_sizes = [2**i for i in range(20) if 2**i > 32 and 2**i < MODULUS**2] + [MODULUS**2]
     optimizers = [
         # torch.optim.SGD,
-        # torch.optim.Adam,
         # torch.optim.AdamW,
         SAM,  # n-SAM vs m-SAM is implicitly controlled by the choice of batch size
+        # torch.optim.Adam,
     ]
     print(f"Running with noise settings {noise_settings}")
     print(f"Running with batch sizes {batch_sizes}")
@@ -201,7 +200,7 @@ if __name__ == "__main__":
 
     res = []
     for noise_std in noise_settings:
-        for batch_size in batch_sizes[4:]:
+        for batch_size in batch_sizes:
             print(f"Training with batch size {batch_size}, noise std {noise_std}")
             train_dataset = DatasetClass(
                 MODULUS, device=DEVICE, noise_std=noise_std
