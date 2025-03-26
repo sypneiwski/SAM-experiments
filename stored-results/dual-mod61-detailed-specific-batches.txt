@@ -1,0 +1,8 @@
+Noise Std: 0.0 | Batch Size: 128 | Optimizer: SAM | Epochs to Solve: None | Best Accuracy: 0.8619430241051863 | m-Sharpness: 11.3416 | Top-1 Eigenvalue: 2357.3591 | Top-1/Top-5 Eigenvalue: 10.6815
+Noise Std: 0.0 | Batch Size: 256 | Optimizer: SAM | Epochs to Solve: None | Best Accuracy: 0.8502556610664719 | m-Sharpness: 2.7597 | Top-1 Eigenvalue: 490.0190 | Top-1/Top-5 Eigenvalue: 3.7904
+Noise Std: 0.0 | Batch Size: 512 | Optimizer: SAM | Epochs to Solve: None | Best Accuracy: 0.8122717311906501 | m-Sharpness: 2.2896 | Top-1 Eigenvalue: 479.0474 | Top-1/Top-5 Eigenvalue: 3.2055
+Noise Std: 0.0 | Batch Size: 1024 | Optimizer: SAM | Epochs to Solve: None | Best Accuracy: 0.8568298027757487 | m-Sharpness: 2.4975 | Top-1 Eigenvalue: 457.8101 | Top-1/Top-5 Eigenvalue: 3.3317
+Noise Std: 1.0 | Batch Size: 128 | Optimizer: SAM | Epochs to Solve: None | Best Accuracy: 0.4718772826880935 | m-Sharpness: 2.5887 | Top-1 Eigenvalue: 255.8050 | Top-1/Top-5 Eigenvalue: 1.9610
+Noise Std: 1.0 | Batch Size: 256 | Optimizer: SAM | Epochs to Solve: None | Best Accuracy: 0.40759678597516436 | m-Sharpness: 1.5115 | Top-1 Eigenvalue: 240.8649 | Top-1/Top-5 Eigenvalue: 2.4595
+Noise Std: 1.0 | Batch Size: 512 | Optimizer: SAM | Epochs to Solve: None | Best Accuracy: 0.41197954711468227 | m-Sharpness: 1.5066 | Top-1 Eigenvalue: 382.3502 | Top-1/Top-5 Eigenvalue: 3.8363
+Noise Std: 1.0 | Batch Size: 1024 | Optimizer: SAM | Epochs to Solve: None | Best Accuracy: 0.42658875091307524 | m-Sharpness: 1.9183 | Top-1 Eigenvalue: 256.4243 | Top-1/Top-5 Eigenvalue: 2.3245
