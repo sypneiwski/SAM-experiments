@@ -1,4 +1,6 @@
 import torch
+import random
+import numpy as np
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from model import MLP
@@ -8,8 +10,6 @@ from eval_sharpness import evaluate_m_sharpness, evaluate_hessian_sharpness
 from tqdm import tqdm
 import csv
 import logging
-
-torch.random.manual_seed(42)
 
 # Global hyperparameters
 MODULUS = 37
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING) # for hessian eigenthings
 
     noise_settings = [0.0, 0.5, 1.0, 2.0]
-    update_batch_size = 1024
+    update_batch_size = 512
     # evenly spaced batch sizes, up to MODULUS**2
     batch_sizes = [i for i in range(1, MODULUS**2 + 1, MODULUS**2 // 4)]
     optimizers = [
@@ -185,6 +185,12 @@ if __name__ == "__main__":
     res = []
     for noise_std in noise_settings:
         for batch_size in batch_sizes:
+            random.seed(42)
+            np.random.seed(42)
+            torch.manual_seed(42)
+            torch.cuda.manual_seed_all(42)
+            torch.random.manual_seed(42)
+
             print(f"Training with batch size {batch_size}, noise std {noise_std}")
             train_dataset = ModularAdditionDataset(
                 MODULUS, device=DEVICE, noise_std=noise_std
