@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from model import MLP
 from data import ModularAdditionDataset
 from sam import SAM
-from eval_sharpness import evaluate_m_sharpness, evaluate_hessian_sharpness
+from eval_sharpness import evaluate_m_sharpness, evaluate_hessian_sharpness, evaluate_fisher_rao_norm
 from tqdm import tqdm
 import csv
 import logging
@@ -30,10 +30,10 @@ def full_test(model, test_dataset):
     return correct / len(test_dataset)
 
 
-def train(train_dataset, batch_size, optim_class):
+def train(train_dataset, test_dataset, batch_size, optim_class):
     train_loader = DataLoader(train_dataset, batch_size=batch_size)
     # Create the model, loss function, and optimizer.
-    model = MLP(input_dim=2, hidden_dim=32, output_dim=MODULUS).to(DEVICE)
+    model = MLP(input_dim=2, hidden_dim=64, output_dim=MODULUS).to(DEVICE)
     criterion = nn.CrossEntropyLoss()
     if optim_class == SAM:
         base_optimizer = torch.optim.Adam
@@ -43,7 +43,7 @@ def train(train_dataset, batch_size, optim_class):
     else:
         optimizer = optim_class(model.parameters(), lr=LEARNING_RATE)
 
-    best_acc = None
+    best_acc, msharpness, top_eigen, fisher_rao = None, None, None, None
 
     # Training loop.
     for epoch in tqdm(range(EPOCHS)):
@@ -74,15 +74,23 @@ def train(train_dataset, batch_size, optim_class):
         avg_loss = total_loss / len(train_loader.dataset)
 
         if epoch % 50 == 0:
-            acc = full_test(model, train_dataset)
+            acc = full_test(model, test_dataset)
             best_acc = max(acc, best_acc) if best_acc is not None else acc
             if acc == 1.0:
-                return epoch, best_acc
+                return epoch, best_acc, msharpness, top_eigen, fisher_rao
             if epoch % 1000 == 0:
+                msharpness = evaluate_m_sharpness(model, train_dataset, criterion, optimizer, m=128)
+                top_eigen = evaluate_hessian_sharpness(model, train_dataset, criterion, use_gpu=DEVICE.type == "cuda")
+                fisher_rao = evaluate_fisher_rao_norm(model, train_dataset, criterion, DEVICE)
                 print(
-                    f"Epoch [{epoch+1}/{EPOCHS}] Loss: {avg_loss:.4f} Accuracy: {acc:.4f}"
+                    f"Epoch [{epoch+1}/{EPOCHS}] | "
+                    f"Loss: {avg_loss:.4f} | "
+                    f"Accuracy: {acc:.4f} | "
+                    f"m-Sharpness: {msharpness:.4f} | "
+                    f"Top-1 Eigenvalue: {top_eigen:.4f} | "
+                    f"Fisher-Rao: {fisher_rao:.4f}"
                 )
-    return None, best_acc
+    return None, best_acc, msharpness, top_eigen, fisher_rao
 
 
 def train_with_dual_loaders(
@@ -97,7 +105,7 @@ def train_with_dual_loaders(
     )
 
     # Initialize model, loss, and optimizer.
-    model = MLP(input_dim=2, hidden_dim=32, output_dim=MODULUS).to(DEVICE)
+    model = MLP(input_dim=2, hidden_dim=64, output_dim=MODULUS).to(DEVICE)
     criterion = nn.CrossEntropyLoss()
     if optim_class == SAM:
         base_optimizer = torch.optim.Adam
@@ -107,7 +115,7 @@ def train_with_dual_loaders(
     else:
         optimizer = optim_class(model.parameters(), lr=LEARNING_RATE)
 
-    best_acc = None
+    best_acc, msharpness, top_eigen, fisher_rao = None, None, None, None
 
     for epoch in tqdm(range(EPOCHS)):
         model.train()
@@ -147,22 +155,21 @@ def train_with_dual_loaders(
             best_acc = max(acc, best_acc) if best_acc is not None else acc
 
             if acc == 1.0:
-                msharpness = evaluate_m_sharpness(model, test_dataset, criterion, optimizer, m=128)
-                top_eigen, bulk_eigen = evaluate_hessian_sharpness(model, test_dataset, criterion, use_gpu=DEVICE.type == "cuda")
-                return epoch, best_acc, msharpness, top_eigen, bulk_eigen
+                return epoch, best_acc, msharpness, top_eigen, fisher_rao
         
             if epoch % 1000 == 0:
                 msharpness = evaluate_m_sharpness(model, test_dataset, criterion, optimizer, m=128)
-                top_eigen, bulk_eigen = evaluate_hessian_sharpness(model, test_dataset, criterion, use_gpu=DEVICE.type == "cuda")
+                top_eigen = evaluate_hessian_sharpness(model, test_dataset, criterion, use_gpu=DEVICE.type == "cuda")
+                fisher_rao = evaluate_fisher_rao_norm(model, train_dataset, criterion, DEVICE)
                 print(
                     f"Epoch [{epoch+1}/{EPOCHS}] | "
                     f"Loss: {avg_loss:.4f} | "
                     f"Accuracy: {acc:.4f} | "
                     f"m-Sharpness: {msharpness:.4f} | "
                     f"Top-1 Eigenvalue: {top_eigen:.4f} | "
-                    f"Top-1/Top-5 Eigenvalue: {bulk_eigen:.4f}"
+                    f"Fisher-Rao: {fisher_rao:.4f}"
                 )
-    return None, best_acc, msharpness, top_eigen, bulk_eigen
+    return None, best_acc, msharpness, top_eigen, fisher_rao
 
 
 if __name__ == "__main__":
@@ -170,8 +177,8 @@ if __name__ == "__main__":
 
     noise_settings = [0.0, 0.5, 1.0, 2.0]
     update_batch_size = 512
-    # evenly spaced batch sizes, up to MODULUS**2
-    batch_sizes = [i for i in range(1, MODULUS**2 + 1, MODULUS**2 // 4)]
+    batch_sizes = [2**i for i in range(20) if 2**i > 32 and 2**i < MODULUS**2] + [MODULUS**2]
+
     optimizers = [
         # torch.optim.SGD,
         # torch.optim.Adam,
@@ -204,8 +211,13 @@ if __name__ == "__main__":
 
             for optimizer in optimizers:
                 print(f"Training with {optimizer.__name__}")
-                # epochs_to_solve, best_acc = train(train_dataset, batch_size=batch_size, optim_class=optimizer)
-                epochs_to_solve, best_acc, msharpness, top_eigen, bulk_eigen = train_with_dual_loaders(
+                # epochs_to_solve, best_acc, msharpness, top_eigen, fisher_rao = train(
+                #     train_dataset,
+                #     test_dataset,
+                #     batch_size=batch_size,
+                #     optim_class=optimizer
+                # )
+                epochs_to_solve, best_acc, msharpness, top_eigen, fisher_rao = train_with_dual_loaders(
                     train_dataset,
                     test_dataset,
                     perturb_batch_size=batch_size,
@@ -213,22 +225,19 @@ if __name__ == "__main__":
                     optim_class=optimizer,
                 )
                 res.append(
-                    (noise_std, batch_size, optimizer, epochs_to_solve, best_acc, msharpness, top_eigen, bulk_eigen)
+                    (noise_std, batch_size, optimizer, epochs_to_solve, best_acc, msharpness, top_eigen, fisher_rao)
                 )
-                # res.append(
-                #     (noise_std, batch_size, optimizer, epochs_to_solve, best_acc, None, None, None)
-                # )
 
     # save res to csv
     with open("results.csv", "w") as f:
         writer = csv.writer(f)
         writer.writerow(
-            ["noise_std", "batch_size", "optimizer", "epochs_to_solve", "best_acc", "m_sharpness", "top_eigen", "bulk_eigen"]
+            ["noise_std", "batch_size", "optimizer", "epochs_to_solve", "best_acc", "m_sharpness", "top_eigen", "fisher_rao"]
         )
         for row in res:
             writer.writerow(row)
 
-    for noise_std, batch_size, optimizer, epochs_to_solve, best_acc, msharpness, top_eigen, bulk_eigen, in res:
+    for noise_std, batch_size, optimizer, epochs_to_solve, best_acc, msharpness, top_eigen, fisher_rao, in res:
         print(
             f"Noise Std: {noise_std} | "
             f"Batch Size: {batch_size} | "
@@ -237,5 +246,5 @@ if __name__ == "__main__":
             f"Best Accuracy: {best_acc} | "
             f"m-Sharpness: {msharpness:.4f} | "
             f"Top-1 Eigenvalue: {top_eigen:.4f} | "
-            f"Top-1/Top-5 Eigenvalue: {bulk_eigen:.4f}"
+            f"Fisher-Rao Norm: {fisher_rao:.4f}"
         )
